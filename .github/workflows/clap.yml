@@ -1,4 +1,4 @@
-name: Векторы CLAP
+name: Каталог и векторы CLAP
 
 on:
   workflow_dispatch:
@@ -7,8 +7,8 @@ on:
     paths:
       - "**/*.wav"
       - "**/metadata.csv"
-      - "tools/clap_embed.py"
-      - "tools/test_queries.txt"
+      - "tools/**"
+      - ".github/workflows/clap.yml"
 
 permissions:
   contents: write
@@ -39,6 +39,11 @@ jobs:
           pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet "transformers>=4.40,<5" soundfile resampy numpy
 
+      - name: Копии для прослушивания и каталог для сайта
+        run: |
+          which ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+          python tools/site_data.py
+
       - name: Считаем векторы
         run: python tools/clap_embed.py
 
@@ -46,7 +51,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898299+github-actions[bot]@users.noreply.github.com"
-          git add embeddings
+          git add embeddings previews
           git diff --cached --quiet && exit 0
-          git commit -m "Векторы CLAP обновлены"
+          git commit -m "Каталог, копии для прослушивания и векторы CLAP обновлены"
           git push
