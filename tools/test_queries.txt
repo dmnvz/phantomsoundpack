@@ -1,0 +1,22 @@
+# Пробные запросы для отчёта CLAP. Одна строка — один запрос.
+soft click of a button in a mobile app
+error notification in an interface
+success chime, positive confirmation
+fast whoosh transition
+heavy cinematic whoosh with low rumble
+fire whoosh
+turning pages of a book
+crumpling paper
+pencil writing on paper
+typing on a mechanical keyboard
+coins dropping on a table
+clock ticking
+magical sparkle appearing
+laser sci-fi shot
+data processing computer sounds
+bubble pop
+cartoon laugh
+# русские запросы как есть (ожидаем, что хуже)
+щелчок кнопки
+перелистывание страниц
+свист ветра
