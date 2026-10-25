@@ -46,4 +46,6 @@ git push
 
 ## Лицензия
 
-[Sound Effects Library License](https://s3.twcstorage.ru/2aeb77bb-950370e4-374b-4948-8881-0bd3d775d628/Doc/Sound%20Effects%20Library%20License.pdf)
+Звуки предоставляются по открытой лицензии Daruma Audio: [`LICENSE.ru.md`](LICENSE.ru.md) — действующий текст, [`LICENSE.en.md`](LICENSE.en.md) — перевод на английский. На сайте: [daruma.audio/ru/sounds/license/](https://daruma.audio/ru/sounds/license/).
+
+Коротко: бесплатно в любых произведениях (видео, реклама, музыка, подкасты) — для себя и клиентов; встраивание в приложения, сайты, игры и устройства — по отдельному договору: sounds@daruma.audio. Скачивая или копируя звуки из этого репозитория, вы принимаете условия лицензии.
