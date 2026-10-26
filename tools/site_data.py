@@ -4,7 +4,8 @@
 Пишет:
   previews/<id>.mp3     — лёгкая копия для прослушивания (MP3 128 кбит/с); делается только для новых
                           и изменившихся звуков (сверка по previews/manifest.json);
-  embeddings/catalog.json — все звуки: id, путь, пак, название, описание, папки, длительность, волна, размер.
+  embeddings/catalog.json — все звуки: id, путь, пак, название, описание, папки, длительность, волна, размер,
+                          точки синхронизации start / sync / end (мс) и тип kind (hit / whoosh / texture).
 Исходные WAV не меняются; скачиваются на сайте прямо с GitHub.
 """
 import csv
@@ -33,6 +34,59 @@ def md5(path):
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+# Точки для синхронизации с видео (мс от начала файла). Файлы не обрезаны: у многих в начале тишина,
+# а у вжухов главный момент («пролёт») наступает через полсекунды и позже.
+#   start — где звук реально начинается (выше −40 дБ от пика);
+#   sync  — что совмещать с событием в видео: у ударов и кликов — атака самого громкого удара,
+#           у вжухов — громкий момент пролёта, у длинных фактур (письмо, печать, часы) — начало;
+#   end   — где затихает хвост (ниже −60 дБ от пика);
+#   kind  — hit / whoosh / texture.
+TEXTURE_CATS = {"WRITE", "CLOCK"}
+TEXTURE_WORDS = ("TYPE", "DATA_TXT", "WRITE", "CLOCK", "TICK", "LONG_SLIDE")
+
+
+def timing(path, cat, name):
+    a, sr = sf.read(path, dtype="float32", always_2d=True)
+    a = np.abs(a).max(axis=1)
+    hop = max(1, int(sr * 0.005))                       # 5 мс
+    n = len(a) // hop
+    if n < 2:
+        return {"start": 0, "sync": 0, "end": int(len(a) / sr * 1000), "kind": "hit"}
+    env = a[: n * hop].reshape(n, hop).max(axis=1)      # огибающая по пикам
+    top = env.max() or 1.0
+    db = 20 * np.log10(np.maximum(env, 1e-9) / top)
+    start = int(np.argmax(db > -40))
+    end = int(n - 1 - np.argmax(db[::-1] > -60))
+    up = name.upper()
+    active = db[start:end + 1]
+    loud_share = float((active > -20).mean()) if len(active) else 0
+    long_ms = (end - start) * 5
+    if cat in TEXTURE_CATS or any(w in up for w in TEXTURE_WORDS) or (long_ms > 2500 and loud_share > 0.3):
+        kind, sync = "texture", start
+    elif cat == "WHOOSH" or "WHOOSH" in up:
+        # пролёт — максимум сглаженной (≈50 мс) громкости
+        k = 10
+        smooth = np.convolve(env ** 2, np.ones(k) / k, mode="same")
+        kind, sync = "whoosh", int(np.argmax(smooth))
+    else:
+        # удар — первый громкий удар (не тише −6 дБ от пика), отступаем к началу его атаки (−20 дБ от него);
+        # если атака дольше 80 мс, это нарастание (появление, подъём) — синхронизация, как у вжуха, по громкому моменту
+        f = int(np.argmax(env >= top * 0.5))
+        local = f
+        while local + 1 < n and env[local + 1] >= env[local]:
+            local += 1
+        j = f
+        while j > start and env[j - 1] > env[local] * 0.1:
+            j -= 1
+        if (local - j) * 5 > 80:
+            k = 10
+            smooth = np.convolve(env ** 2, np.ones(k) / k, mode="same")
+            kind, sync = "whoosh", int(np.argmax(smooth))
+        else:
+            kind, sync = "hit", j
+    return {"start": start * 5, "sync": sync * 5, "end": end * 5, "kind": kind}
 
 
 def peaks(path):
@@ -74,6 +128,7 @@ for meta in sorted(glob.glob("*/metadata.csv")):
             "sub": row.get("subcategory", ""),
             "dur": float(row.get("duration_s") or 0),
             "peaks": peaks(file),
+            **timing(file, row.get("category", ""), row["name"]),
             "bytes": os.path.getsize(file),
         })
 
